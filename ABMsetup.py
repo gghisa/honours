@@ -42,6 +42,8 @@ from algorithms import algos
 
 import numpy as np
 
+import sympy as sy
+
 import matplotlib.pyplot as plt
 
 from random import randint as ri
@@ -60,21 +62,34 @@ class model(Model):
         self.agents = []
         # Datacollector? no implementation yet
         
+        '''
+        INTERMEZZO ON "GODEL'S NUMBERS" FOR ALL TYPES OF AGENTS:
+        each agent (derived class) as unique_id has a prime;
+        each obstacle as unique_id has a prime;
+        each path as unique_id has a new prime multiplied by the unique_id of the agent it corresponds to.
+        '''
+        
         #create agents
         for i in range(self.n_agents):
-            unit = agent(i,self) # needs agent class to be defined
+            unit = agent(self.new_id(),self) # needs agent class to be defined
             #self.grid.place_agent(unit,(0,0)) #how to place agents?
             self.schedule.add(unit) #probably for making an agent part of the execution
             self.agents.append(unit)
             
         #create obstacles
         for i in range(len(obstacles)):
-            self.grid.place_agent(obstacle(i,self), obstacles[i])
+            self.grid.place_agent(obstacle(self.new_id(),self), obstacles[i])
             
     def step(self):
         #self.datacollector.collect(self) ???
         self.schedule.step()
         return
+    
+    def new_id(self):
+        if len(self.agents) == 0:
+            return 1
+        else:
+            return sy.nextprime(self.agents[-1].unique_id)
 
 
 class agent(Agent):
@@ -84,29 +99,44 @@ class agent(Agent):
         self.goal = goal
         self.potential = potential(self) #element to store the potential of an agent
         self.path = []
-    
+        self.path_agents = []
+        
     def find_path(self):
         self.potential.compute()
-        self.potential.plot()
+        #self.potential.plot() DOES NOT WORK
         self.path = algos(self,2)
-        '''
+        
         for i in range(len(self.path)):
-            self.model.grid.place_agent(path(self.unique_id+500,self.model,self),self.path[i])
-            #!!! Godel's numbers?
-        '''
+            p_new = path(self.model.new_id()*self.unique_id,self,i)
+            #p_new = agent(self.model.new_id()*self.unique_id,self.model,rest = self.path[i])
+            self.path_agents.append(p_new)
+            self.model.agents.append(p_new)
+        
         return
     
     def move(self):
         if len(self.path) > 0:
             self.model.grid.move_agent(self,self.path[0])
+            self.path.pop(0)
         return
     
     def step(self): #step function is called at any time the step
-    
-        while self.pos == self.goal or self.goal in self.model.obstacles:
-            self.goal = (ri(0,self.model.grid.width),ri(0,self.model.grid.height))
-            
-        self.find_path()#!!! finding path every step: computationally inefficient
+        if self.pos == self.goal or len(self.path) == 0:
+            while self.pos == self.goal or self.goal in self.model.obstacles:
+                for i in range(len(self.path_agents)-1,-1,-1):
+                    #delete agent first from own made agents list
+                    for i in range(len(self.model.agents)-1,-1,-1):
+                        #check that path agent belongs to current agent (and is not current agent!)
+                        if self.model.agents[i].unique_id % self.unique_id == 0 and self.model.agents[i] != self:
+                            self.model.agents.pop(i)
+                    #then remove agent from grid and path agents list    
+                    self.model.grid.remove_agent(self.path_agents[i])
+                    self.path_agents.pop(i)
+                    
+                self.goal = (ri(0,self.model.grid.width-1),ri(0,self.model.grid.height-1))
+                self.potential.ground = self.goal
+            self.find_path()
+        
         self.move()
         return
 
@@ -117,14 +147,16 @@ class obstacle(Agent):
     def step(self): pass
 
 class path(Agent):
-    def __init__(self,unique_id,model,unit):
-        super().__init__(unique_id,model)
+    def __init__(self,unique_id,unit,path_id):
+        super().__init__(unique_id,unit.model)
         self.agent = unit #an agent has its own path particles
+        self.model.grid.place_agent(self,self.agent.path[path_id])
         
     def step(self):
         if self.pos not in self.agent.path:
             #autonomously remove itself if its not in the path of an agent anymore
             self.agent.model.grid.remove_agent(self)
+        return
 
 class potential():
     def __init__(self, unit):
@@ -140,7 +172,7 @@ class potential():
         if self.ground in self.obstacles:#more actions to be taken?
             print("Goal is an obstacle!!")
             
-        self.map = np.zeros((self.model.grid.width,self.model.grid.height)) #not sure these are attributes
+        self.map = np.zeros((self.model.grid.width,self.model.grid.height))
             
     def compute(self):
         self.map = algos(self.agent,1)
@@ -173,10 +205,9 @@ def agent_portrayal(unit):
              'Color': 'green',
              'Filled':'true',
              'text': unit.agent.unique_id,
-             'text_color': 'black',
+             'text_color': 'white',
              'Layer':0,
-             'w':0.5,
-             'h':0.5}
+             'r':0.5}
 
 def visualise(n_agents, w, h,
               stations = [],restpoints = [] ,obstacles = []):

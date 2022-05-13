@@ -69,7 +69,7 @@ def potential(origin: tuple, goal: tuple, model: Model,
                         op_list.append(n) #then add the node to the open list (only if new value was lower already)
         for i in range(op_len-1,-1,-1): #remove all nodes looped over in the current run
             op_list.pop(i)
-    
+            
     return vals
 
 def findmove(potential):
@@ -77,6 +77,7 @@ def findmove(potential):
     origin = potential.agent.pos
     goal = potential.ground
     model = potential.agent.model
+    
     #now that the cost values are given, find the path
     #by going through each cell from the starting one and selecting from its neighbours
     #that with the lowest cost
