@@ -16,3 +16,8 @@ def manh_dist(cell1,cell2):
 def tche_dist(cell1,cell2):
     return max( abs(cell1[0] - cell2[0]), abs(cell1[1],cell2[1]) )
 
+def dist(cell1,cell2,choose: str):
+    
+    if distance_method == 'euclid': return eucl_dist(cell1,cell2)
+    elif distance_method == 'manhattan': return manh_dist(cell1,cell2)
+    return tche_dist(cell1,cell2)

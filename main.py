@@ -12,7 +12,7 @@ ONE TO BE ABLE TO USE THE SAME PORT IN CONSECUTIVE SIMULATIONS (VISUALISATIONS)
 from ABMsetup import *
 
 width = 35
-height = width
+height = width+8
 n_agents = 1
 stations = []
 restpoints =  []

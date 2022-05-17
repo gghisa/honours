@@ -43,14 +43,10 @@ def potential(origin: tuple, goal: tuple, model: Model,
     vals : np.array
         Heatmap of the grid.
     '''
-    distance = None
-    if distance_method == 'euclid': distance = eucl_dist
-    elif distance_method == 'manhattan': distance = manh_dist
-    else: distance = tche_dist
     #create open list
     op_list = [goal]
     #set cost of single cell to high. post-multiplying factor to be changed
-    vals = np.ones((model.grid.width,model.grid.height))*model.grid.height
+    vals = np.ones((model.grid.width,model.grid.height))*model.grid.height #!!! WHY IS IT W*H and not viceversa
     #set cost of goal cell to 0
     vals[goal[0],goal[1]] = 0
     
@@ -63,7 +59,7 @@ def potential(origin: tuple, goal: tuple, model: Model,
             
             for n in ns: #for every neighbouring cell
                 if n not in model.obstacles: #if it is not an obstacle
-                    new_val = vals[cell[0],cell[1]] + distance(cell,n) #compute new potential distance value
+                    new_val = vals[cell[0],cell[1]] + dist(cell,n,distance_method) #compute new potential distance value
                     if new_val < vals[n[0],n[1]]: #if the new one is lower
                         vals[n[0],n[1]] = new_val #update the current neightbour value
                         op_list.append(n) #then add the node to the open list (only if new value was lower already)
@@ -72,7 +68,7 @@ def potential(origin: tuple, goal: tuple, model: Model,
             
     return vals
 
-def findmove(potential):
+def findmove(potential):#findmove is only used with as input the full potential
     vals = potential.map
     origin = potential.agent.pos
     goal = potential.ground
@@ -105,3 +101,51 @@ def findmove(potential):
         vals[cell[0],cell[1]] = -model.grid.height/4 
     
     return vals,steps,path
+
+def a_star(origin: tuple, goal: tuple, model: Model,
+           distance_method = 'euclid'):
+    
+    olist = [origin] #open list
+    glist = [0] #g values for each entry in olist (it's the vals for the cells present in olist)
+    hlist = [dist(origin,goal,distance_method)]
+    
+    clist = [] #close list
+    vals = np.zeros((model.grid.width,model.grid.height))#!!! why not h*w?
+    
+    path = []
+    while len(olist) != 0:
+        if len(glist) != len(hlist):
+            print('g and h lists length difference')
+        i = np.argmin(np.array(glist) + np.array(hlist))#argmin of f_list
+        
+        if olist[i] == goal:
+            clist.append(olist[i])
+            break
+        
+        neighbours = model.grid.get_neighborhood(olist[i], moore=True)
+        for n in range(len(neighbours)-1,-1,-1):#remove neighbour if obstacle
+            if neighbours[n] in model.obstacles:
+                neighbours.pop(n)
+        
+        for j in range(len(neighbours)):#using j for iteration as i is in use
+            #we can be sure to be operating for a current cell in open list,
+            #so no need to use vals, but can use glist
+            
+            cneigh = glist[i] + dist(olist[i],neighbours[j],distance_method)
+            if neighbours[j] in olist:
+                if vals[neighbours[j][0],neighbours[j][1]] <= cneigh:
+                    continue
+            elif neighbours[j] in clist:
+                if vals[neighbours[j][0],neighbours[j][1]] <= cneigh:
+                    olist.append(neighbours[j])
+                    glist.append(vals[neighbours[j][0],neighbours[j][1]])
+                    hlist.append(dist(neighbours[j],goal,distance_method))
+                    
+                    clist.remove(neighbours[j])
+                    continue
+            else:
+                olist.append(neighbours[j])
+                glist.append(cneigh)
+           
+            clist.append(olist[i])
+            

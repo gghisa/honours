@@ -101,10 +101,11 @@ class agent(Agent):
         self.path = []
         self.path_agents = []
         
-    def find_path(self):
-        self.potential.compute()
+    def find_path(self,algo_n = 2):
+        if algo_n == 2:
+            self.potential.compute() #no need to compute the potential if A* is used
         #self.potential.plot() DOES NOT WORK
-        self.path = algos(self,2)
+        self.path = algos(self,algo_n)
         
         for i in range(len(self.path)):
             p_new = path(self.model.new_id()*self.unique_id,self,i)
@@ -135,8 +136,8 @@ class agent(Agent):
                     
                 self.goal = (ri(0,self.model.grid.width-1),ri(0,self.model.grid.height-1))
                 self.potential.ground = self.goal
-            self.find_path()
-        
+            self.find_path(2)
+            
         self.move()
         return
 
